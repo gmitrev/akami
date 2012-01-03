@@ -10,6 +10,7 @@ module Akami
   # Building Web Service Security.
   class WSSE
 
+
     # Namespace for WS Security Secext.
     WSE_NAMESPACE = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
 
@@ -69,19 +70,33 @@ module Akami
       if username_token? && timestamp?
         Gyoku.xml wsse_username_token.merge!(wsu_timestamp) {
           |key, v1, v2| v1.merge!(v2) {
-            |key, v1, v2| v1.merge!(v2)
-          }
+          |key, v1, v2| v1.merge!(v2)
+        }
         }
       elsif username_token?
         Gyoku.xml wsse_username_token.merge!(hash)
       elsif timestamp?
-        Gyoku.xml wsu_timestamp.merge!(hash)
+        # raise (wsu_timestamp.to_s + wsu_binary_token.to_s + wsu_signature.to_s).inspect
+        # raise wsu_binary_token.merge!(wsu_timestamp){
+        #   |key, v1, v2| v1.merge!(v2) {
+        #     |key, v1, v2| v1.merge!(v2){
+        #     }
+        #   }
+        # }.inspect
+        Gyoku.xml wsu_binary_token.merge!(wsu_timestamp){
+          |key, v1, v2| v1.merge!(v2) {
+          |key, v1, v2| v1.merge!(v2){
+        }
+        }
+        }.merge!(wsu_signature){
+          |key, v1, v2| v1.merge!(v2)
+        }
       else
         ""
       end
     end
 
-  private
+    private
 
     # Returns a Hash containing wsse:UsernameToken details.
     def wsse_username_token
@@ -107,15 +122,44 @@ module Akami
         "wsu:Expires" => (expires_at || (created_at || Time.now) + 60).xs_datetime
     end
 
+    def wsu_binary_token
+      security_hash :wsu, "BinarySecurityToken",
+        :attributes! => { "BinarySecurityToken" => { "u:ID" => "DURR"} }
+    end
+
+    def wsu_signature
+      security_hash :wsu, "Signature",
+        "SignedInfo" => {
+          "CanonicalizationMethod" => "",
+          "SignatureMethod" => "",
+          "Reference" => {
+            "Transforms" => {
+              "Transform" => "" 
+            },
+            "DigestMethod" => "",
+            "DigestValue" => ""
+          },
+          :attributes! => { "test" => { "HOHO" => "HOHO" } }
+        },
+        "SignatureValue" => "",
+        "Keyinfo" => {
+          "o:SecurityTokenReference" => {
+            "o:Reference" => ""
+          }
+        },
+        :attributes! => {}
+        
+    end
+
     # Returns a Hash containing wsse/wsu Security details for a given
     # +namespace+, +tag+ and +hash+.
     def security_hash(namespace, tag, hash)
       {
-        "wsse:Security" => {
+        'wsse:Security' => {
           "#{namespace}:#{tag}" => hash,
-          :attributes! => { "#{namespace}:#{tag}" => { "wsu:Id" => "#{tag}-#{count}", "xmlns:wsu" => WSU_NAMESPACE } }
+          :attributes! => { "#{namespace}:#{tag}" => { "wsu:Id" => "#{tag}-#{count}", "xmlns:wsu" => WSU_NAMESPACE }, "wsu:BinarySecurityToken" => { "u:Id" => "Some id"} }
         },
-        :attributes! => { "wsse:Security" => { "xmlns:wsse" => WSE_NAMESPACE } }
+        :attributes! => { "wsse:Security" => { "xmlns:wsse" => WSE_NAMESPACE, 'wsse:mustUnderstand' => '1'} }
       }
     end
 

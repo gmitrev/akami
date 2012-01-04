@@ -33,8 +33,6 @@ module Akami
       hash[key] = value
     end
 
-    attr_accessor :certs
-
     # Sets authentication credentials for a wsse:UsernameToken header.
     # Also accepts whether to use WSSE digest authentication.
     def credentials(username, password, digest = false)
@@ -85,11 +83,11 @@ module Akami
         #     }
         #   }
         # }.inspect
-        Gyoku.xml binary_token.merge!(wsu_timestamp){
+        Gyoku.xml wsu_binary_token.merge!(wsu_timestamp){
           |key, v1, v2| v1.merge!(v2) {
-            |key, v1, v2| v1.merge!(v2){
-            }
-          }
+          |key, v1, v2| v1.merge!(v2){
+        }
+        }
         }.merge!(wsu_signature){
           |key, v1, v2| v1.merge!(v2)
         }
@@ -126,24 +124,13 @@ module Akami
 
     def wsu_binary_token
       security_hash :wsu, "BinarySecurityToken",
-        :attributes! => { "BinarySecurityToken" => { "u:ID" => "", "ValueType" => "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3", "EncodingType" => "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary"} }
-    end
-
-    def binary_token
-      {
-        'wsse:Security' => {
-          "wsu:BinarySecurityToken" => Base64.encode64(certs.cert.to_der).gsub("\n", ''),
-          :attributes! => { "wsu:BinarySecurityToken" => { "u:ID" => "", "ValueType" => "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3", "EncodingType" => "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary"} }
-        },
-        :attributes! => { "wsse:Security" => { "xmlns:wsse" => WSE_NAMESPACE, 'wsse:mustUnderstand' => '1'} }
-      }
-
+        :attributes! => { "BinarySecurityToken" => { "u:ID" => "DURR"} }
     end
 
     def wsu_signature
       security_hash :wsu, "Signature",
         "SignedInfo" => {
-          "CanonicalizationMethod/" => nil,
+          "CanonicalizationMethod" => "",
           "SignatureMethod" => "",
           "Reference" => {
             "Transforms" => {
@@ -164,14 +151,13 @@ module Akami
         
     end
 
-
     # Returns a Hash containing wsse/wsu Security details for a given
     # +namespace+, +tag+ and +hash+.
     def security_hash(namespace, tag, hash)
       {
         'wsse:Security' => {
           "#{namespace}:#{tag}" => hash,
-          :attributes! => { "#{namespace}:#{tag}" => { "wsu:Id" => "#{tag}-#{count}", "xmlns:wsu" => WSU_NAMESPACE }  }
+          :attributes! => { "#{namespace}:#{tag}" => { "wsu:Id" => "#{tag}-#{count}", "xmlns:wsu" => WSU_NAMESPACE }, "wsu:BinarySecurityToken" => { "u:Id" => "Some id"} }
         },
         :attributes! => { "wsse:Security" => { "xmlns:wsse" => WSE_NAMESPACE, 'wsse:mustUnderstand' => '1'} }
       }

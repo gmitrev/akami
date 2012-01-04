@@ -1,6 +1,5 @@
 require "akami/version"
 require "akami/wsse"
-require "akami/certs"
 
 module Akami
 
